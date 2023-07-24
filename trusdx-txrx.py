@@ -261,11 +261,21 @@ def run():
         elif platform == "win32":
            virtual_audio_dev_out = "CABLE Output"
            virtual_audio_dev_in  = "CABLE Input"
-           trusdx_serial_dev     = "CH340"
-           loopback_serial_dev   = "COM9"
-           cat_serial_dev        = "COM8"
+           trusdx_serial_dev     = "CH340"        # Driver search (AVR's virtual USB) COM port for (tr)uSDX device
+           loopback_serial_dev   = "COM9"         # truSDX driver communicate with WSJT-X using this (virtual) COM port
+           cat_serial_dev        = "COM8"         # WSJT-X should access this (virtual) COM port, no real functionality
         elif platform == "darwin":
            log("OS X not implemented yet")
+
+        # Handle command line serial port config overrides	   
+        if not config['trusdx']   == "none":
+           trusdx_serial_dev      = str(config['trusdx'])
+
+        if not config['loopback'] == "none":
+           loopback_serial_dev    = str(config['loopback'])
+
+        if not config['cat']      == "none":
+           cat_serial_dev         = str(config['cat'])
 
         if config['direct']:
            virtual_audio_dev_out = "" # default audio device
@@ -280,11 +290,15 @@ def run():
         
         if platform == "win32":
             if find_serial_device(loopback_serial_dev):
-                print(f"Conflict on COM port {loopback_serial_dev}: Go to Device Manager, select CH340 device and change in advanced settings COM port other than 8 or 9.")
-                time.sleep(1)
+                # Disable false warning message
+                if config['loopback'] == "none":
+                   print(f"Conflict on COM port {loopback_serial_dev}: Go to Device Manager, select CH340 device and change in advanced settings COM port other than 8 or 9.")
+                   time.sleep(1)
             if find_serial_device(cat_serial_dev):
-                print(f"Conflict on COM port {cat_serial_dev}: Go to Device Manager, select CH340 device and change in advanced settings COM port other than 8 or 9.")
-                time.sleep(1)
+                # Disable false warning message
+                if config['cat'] == "none":
+                   print(f"Conflict on COM port {cat_serial_dev}: Go to Device Manager, select CH340 device and change in advanced settings COM port other than 8 or 9.")
+                   time.sleep(1)
 
         if platform != "win32":  # skip for Windows as we have com0com there
            _master1, slave1 = os.openpty()  # make a tty <-> tty device where one end is opened as serial device, other end by CAT app
@@ -380,9 +394,12 @@ if __name__ == '__main__':
     parser.add_argument("--unmute", action="store_true", default=False, help="Enable (tr)usdx audio")
     parser.add_argument("--direct", action="store_true", default=False, help="Use system audio devices (no loopback)")
     parser.add_argument("--no-rtsdtr", action="store_true", default=False, help="Disable RTS/DTR-triggered PTT")
-    #parser.add_argument("-B", "--block-size", type=int, default=512 if platform == "win32" else 32, help="RX Block size")
+#   parser.add_argument("-B", "--block-size", type=int, default=512 if platform == "win32" else 32, help="RX Block size")
     parser.add_argument("-B", "--block-size", type=int, default=512, help="RX Block size")
     parser.add_argument("-T", "--tx-block-size", type=int, default=48, help="TX Block size")
+    parser.add_argument("--trusdx",         default="none",  help="(tr)uSDX serial communication port")
+    parser.add_argument("-L", "--loopback", default="none",  help="loopback serial communication port")
+    parser.add_argument("-C", "--cat",      default="none",  help="CAT serial communication port (only informative)")
     args = parser.parse_args()
     config = vars(args)
     if config['verbose']: print(config)
